@@ -18,10 +18,10 @@ NCURSES_URL="https://ftp.gnu.org/gnu/ncurses/${NCURSES_VERSION}.tar.gz"
 # GitHub repos that will be cloned with --depth 1
 declare -A GITHUB_REPOS=(
     ["libxml2"]="https://github.com/GNOME/libxml2.git"
-	["llvm-project"]="https://github.com/llvm/llvm-project.git"
+	#["llvm-project"]="https://github.com/llvm/llvm-project.git"
 	["zstd"]="https://github.com/facebook/zstd.git"
 	["lz4"]="https://github.com/lz4/lz4.git"
-	#["llvm-project"]="https://android.googlesource.com/toolchain/llvm-project"
+	["llvm-project"]="https://android.googlesource.com/toolchain/llvm-project"
 	["yasm"]="https://github.com/yasm/yasm.git"
 )
 
