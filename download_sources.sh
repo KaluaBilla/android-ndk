@@ -22,6 +22,7 @@ declare -A GITHUB_REPOS=(
 	["zstd"]="https://github.com/facebook/zstd.git"
 	["lz4"]="https://github.com/lz4/lz4.git"
 	["llvm-project"]="https://android.googlesource.com/toolchain/llvm-project"
+	["yasm"]="https://github.com/yasm/yasm.git"
 )
 
 PARALLEL_DOWNLOADS=${PARALLEL_DOWNLOADS:-8}
