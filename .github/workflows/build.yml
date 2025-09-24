@@ -38,7 +38,6 @@ jobs:
           NDK_ZIP="android-ndk-${NDK_VERSION}-linux.zip"
           curl -LO https://dl.google.com/android/repository/${NDK_ZIP}
           unzip ${NDK_ZIP}
-          mv android-ndk-${NDK_VERSION} $HOME/android-ndk-${NDK_VERSION}
 
           echo "ANDROID_NDK_ROOT=$HOME/android-ndk-${NDK_VERSION}" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$HOME/android-ndk-${NDK_VERSION}" >> $GITHUB_ENV
