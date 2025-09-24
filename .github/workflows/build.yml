@@ -1,0 +1,51 @@
+name: Build LLVM Android
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [aarch64]
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build make autoconf automake libtool pkg-config texinfo gettext gperf bison flex git xz-utils unzip nasm yasm python3 python3-pip python3-venv
+
+      - name: Install pipx and Meson
+        run: |
+          python3 -m pip install --user pipx
+          python3 -m pipx ensurepath
+          export PATH="$HOME/.local/bin:$PATH"
+          pipx install meson
+
+      - name: Install Android NDK (r29 beta4)
+        run: |
+          cd $HOME
+          curl -LO https://dl.google.com/android/repository/android-ndk-r29-beta4-linux.zip
+          unzip android-ndk-r29-beta4-linux.zip
+          mv android-ndk-r29-beta4 $HOME/android-ndk-r29
+          echo "ANDROID_NDK_ROOT=$HOME/android-ndk-r29" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r29" >> $GITHUB_ENV
+          echo "$HOME/android-ndk-r29/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Set ARCH
+        run: echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - name: Build LLVM
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: bash ${{ github.workspace }}/build.sh
+
+      - name: Upload LLVM tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: llvm-${{ matrix.arch }}
+          path: ${{ github.workspace }}/llvm-${{ matrix.arch }}.tar.gz
