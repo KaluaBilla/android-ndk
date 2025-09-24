@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [aarch64]
+        arch: [aarch64, x86]
       fail-fast: false
     steps:
       - name: Checkout repository
