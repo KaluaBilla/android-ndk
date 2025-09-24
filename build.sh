@@ -371,7 +371,7 @@ get_simd_flags() {
 }
 
 CROSS_FILE_TEMPLATE="$BUILD_DIR/.meson-cross-template"
-DOWNLOADER_SCRIPT="${ROOT_DIR}/scripts/download_sources.sh"
+DOWNLOADER_SCRIPT="${ROOT_DIR}/download_sources.sh"
 
 source "$DOWNLOADER_SCRIPT"
 
