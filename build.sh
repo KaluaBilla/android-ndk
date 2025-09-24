@@ -371,7 +371,7 @@ get_simd_flags() {
 }
 
 CROSS_FILE_TEMPLATE="$BUILD_DIR/.meson-cross-template"
-DOWNLOADER_SCRIPT="${ROOT_DIR}/download_sources.sh"
+DOWNLOADER_SCRIPT="${ROOT_DIR}/scripts/download_sources.sh"
 
 source "$DOWNLOADER_SCRIPT"
 
@@ -491,6 +491,34 @@ build_libxml2() {
 		LDFLAGS="$LDFLAGS -L$PREFIX/lib"
 }
 
+build_ncurses() {
+	cd "$BUILD_DIR/ncurses"
+	
+	set_autotools_env
+	
+	./configure \
+		"${COMMON_AUTOTOOLS_FLAGS[@]}" \
+		--without-ada \
+		--without-manpages \
+		--without-progs \
+		--without-tests \
+		--with-fallbacks=linux,screen,screen-256color,tmux,tmux-256color,vt100,xterm,xterm-256color \
+		--enable-widec \
+		--disable-database \
+		--with-default-terminfo-dir=/etc/terminfo
+	
+	make -j$(nproc)
+	make install
+	
+	cd "$PREFIX/lib"
+	ln -sf libtinfow.a libtinfo.a
+	ln -sf libncursesw.a libncurses.a
+	cd "$PREFIX/include" && ln -s ncursesw ncurses
+	
+	echo "✔ ncurses built successfully"
+}
+
+
 build_llvm() {
     echo "[+] Building LLVM for $ARCH..."
     cd "$BUILD_DIR/llvm-project" || exit 1
@@ -548,7 +576,7 @@ fi
         "-DLLVM_BUILD_RUNTIME=OFF"
         "-DLLVM_BUILD_TOOLS=OFF"
         "-DLLVM_BUILD_UTILS=OFF"
-        "-DLLVM_ENABLE_TERMINFO=OFF"
+        "-DLLVM_ENABLE_TERMINFO=ON"
         "-DLLVM_ENABLE_LIBEDIT=OFF"
         "-DLLVM_ENABLE_LIBXML2=ON"
         "-DLLVM_ENABLE_ZLIB=ON"
@@ -581,7 +609,5 @@ build_lz4
 build_zstd
 build_libffi
 build_libxml2
+build_ncurses
 build_llvm
-
-cd "$BUILD_DIR"
-tar -czf "$ROOT_DIR/llvm-${ARCH}.tar.gz" prefix
