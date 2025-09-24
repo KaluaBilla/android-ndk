@@ -564,63 +564,48 @@ build_llvm() {
 
 
     local LLVM_CMAKE_FLAGS=(
-        "${MINIMAL_CMAKE_FLAGS[@]}"
-        "-DCMAKE_CROSSCOMPILING=ON"
-        "-DLLVM_TABLEGEN=$LLVM_TBLGEN"
-        "-DCLANG_TABLEGEN=$CLANG_TBLGEN"
-        "-DLLVM_DEFAULT_TARGET_TRIPLE=$CLANG_TRIPLE"
-        "-DLLVM_TARGET_ARCH=$ARCH"
-        
-        
-        "-DLLVM_TARGETS_TO_BUILD=AArch64;ARM;X86;RISCV"
-        
-        
-        "-DLLVM_ENABLE_PROJECTS=clang;lld"
-        
-        # Build configuration
-        "-DLLVM_BUILD_RUNTIME=OFF"
-        "-DLLVM_BUILD_STATIC=ON"
-        "-DBUILD_SHARED_LIBS=OFF"
-        
-        "-DLLVM_INCLUDE_TESTS=OFF"
-        "-DLLVM_INCLUDE_BENCHMARKS=OFF"
-        "-DLLVM_INCLUDE_EXAMPLES=OFF"
-        "-DLLVM_INCLUDE_DOCS=OFF"
-        
-        # Disable Clang tools we don't need
-        "-DCLANG_BUILD_TOOLS=OFF"                    # Disables c-index-test and others
-        "-DCLANG_ENABLE_STATIC_ANALYZER=OFF"         # No static analyzer
-        "-DCLANG_ENABLE_ARCMT=OFF"                   # No ARC migration tool
-        "-DCLANG_TOOL_C_INDEX_TEST_BUILD=OFF"        # Explicitly disable c-index-test
-        "-DCLANG_TOOL_LIBCLANG_BUILD=OFF"            # No libclang
-        "-DCLANG_TOOL_CLANG_FORMAT_BUILD=OFF"        # No clang-format
-        "-DCLANG_TOOL_CLANG_FUZZER_BUILD=OFF"        # No fuzzer
-        
-        # Build only essential LLVM tools for NDK
-        "-DLLVM_BUILD_TOOLS=ON"
-        "-DLLVM_BUILD_UTILS=OFF"                     # Disable non-essential utils
-        
-        # Disable features not needed for NDK
-        "-DLLVM_ENABLE_TERMINFO=OFF"
-        "-DLLVM_ENABLE_LIBEDIT=OFF"
-        "-DLLVM_ENABLE_LIBXML2=OFF"                  # Not needed for basic compilation
-        "-DLLVM_ENABLE_ZLIB=ON"                      # Keep zlib for compression
-        
-        # Essential tools for NDK (these will be built)
-        "-DLLVM_TOOL_LLVM_AR_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_RANLIB_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_STRIP_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_OBJDUMP_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_OBJCOPY_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_READELF_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_ADDR2LINE_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_NM_BUILD=ON"
-        "-DLLVM_TOOL_LLVM_SIZE_BUILD=ON"
-        
-        # Zlib settings
-        "-DZLIB_LIBRARY=$PREFIX/lib/libz.a"
-        "-DZLIB_INCLUDE_DIR=$PREFIX/include"
-    )
+    "${MINIMAL_CMAKE_FLAGS[@]}"
+    "-DCMAKE_CROSSCOMPILING=ON"
+    "-DLLVM_TABLEGEN=$LLVM_TBLGEN"
+    "-DCLANG_TABLEGEN=$CLANG_TBLGEN"
+    "-DLLVM_DEFAULT_TARGET_TRIPLE=$CLANG_TRIPLE"
+    "-DLLVM_TARGET_ARCH=$ARCH"
+    
+    "-DLLVM_TARGETS_TO_BUILD=AArch64;ARM;X86;RISCV"
+    "-DLLVM_ENABLE_PROJECTS=clang;lld"
+    
+    # Build configuration
+    "-DLLVM_BUILD_RUNTIME=OFF"
+    "-DLLVM_BUILD_STATIC=ON"
+    "-DBUILD_SHARED_LIBS=OFF"
+    
+    "-DLLVM_INCLUDE_TESTS=OFF"
+    "-DLLVM_INCLUDE_BENCHMARKS=OFF"
+    "-DLLVM_INCLUDE_EXAMPLES=OFF"
+    "-DLLVM_INCLUDE_DOCS=OFF"
+    
+    # Clang tools configuration - KEEP useful ones, disable problematic ones
+    "-DCLANG_BUILD_TOOLS=ON"                        # Keep most Clang tools
+    "-DCLANG_ENABLE_STATIC_ANALYZER=OFF"            # Disable static analyzer
+    "-DCLANG_ENABLE_ARCMT=OFF"                      # Disable ARC migration tool
+    "-DCLANG_TOOL_C_INDEX_TEST_BUILD=OFF"           # Disable c-index-test
+    "-DCLANG_TOOL_LIBCLANG_BUILD=OFF"               # Disable libclang
+    
+    # LLVM tools configuration  
+    "-DLLVM_BUILD_TOOLS=ON"                         # Keep LLVM tools
+    "-DLLVM_BUILD_UTILS=OFF"                        
+    
+    # Features configuration
+    "-DLLVM_ENABLE_LIBEDIT=OFF"                     
+    "-DLLVM_ENABLE_LIBXML2=ON"                      
+    "-DLLVM_ENABLE_ZLIB=ON"                         
+    
+    # Library paths
+    "-DLIBXML2_LIBRARY=$PREFIX/lib/libxml2.a"       # Only if you built libxml2
+    "-DLIBXML2_INCLUDE_DIR=$PREFIX/include/libxml2/libxml"
+    "-DZLIB_LIBRARY=$PREFIX/lib/libz.a"
+    "-DZLIB_INCLUDE_DIR=$PREFIX/include"
+)
     
     echo "[+] Configuring LLVM with NDK-focused options..."
     cmake ../llvm -G Ninja "${LLVM_CMAKE_FLAGS[@]}"
