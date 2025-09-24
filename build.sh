@@ -690,5 +690,5 @@ cp -r "$PREFIX"/lib/clang/* "$NDK_BIN_DIR"/../lib/clang/
 ([ "${ARCH}" != "x86_64" ] && cd "$NDK_BIN_DIR"/../../ && ln -s "linux-${ARCH}" linux-x86_64) || true
 cd "$OUTPUT"
 mv android-ndk android-ndk-${ANDROID_NDK_VERSION}
-zip -r -y -9 "${ROOT_DIR}/android-ndk-${ANDROID_NDK_VERSION}.zip" "android-ndk-${ANDROID_NDK_VERSION}"
+zip -r -y -9 "${ROOT_DIR}/android-ndk-${ANDROID_NDK_VERSION}-${ARCH}.zip" "android-ndk-${ANDROID_NDK_VERSION}"
 
