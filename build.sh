@@ -559,7 +559,7 @@ fi
         "-DLLVM_INCLUDE_EXAMPLES=OFF"
         "-DLLVM_INCLUDE_DOCS=OFF"
         "-DLIBXML2_LIBRARY=$PREFIX/lib/libxml2.a"
-        "-DLIBXML2_INCLUDE_DIR=$PREFIX/include/libxml2"
+        "-DLIBXML2_INCLUDE_DIR=$PREFIX/include/libxml2/libxml"
         "-DZLIB_LIBRARY=$PREFIX/lib/libz.a"
         "-DZLIB_INCLUDE_DIR=$PREFIX/include"
     )
