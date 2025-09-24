@@ -1,2 +1,2 @@
-# llvm-builder
-llvm builder using Android ndk
+# android-ndk
+android-ndk build for aarch64
