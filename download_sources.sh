@@ -7,11 +7,13 @@ LOCK_FILE="${ROOT_DIR}/git-sources.lock"
 ZLIB_VERSION="zlib-1.3.1"
 XZ_VERSION="xz-5.8.1"
 LIBFFI_VERSION="libffi-3.5.2"
+NCURSES_VERSION="ncurses-6.5"
 
 # URL definitions for direct downloads
 ZLIB_URL="https://zlib.net/${ZLIB_VERSION}.tar.gz"
 XZ_URL="https://github.com/tukaani-project/xz/releases/download/v5.8.1/${XZ_VERSION}.tar.gz"
 LIBFFI_URL="https://github.com/libffi/libffi/releases/download/v3.5.2/${LIBFFI_VERSION}.tar.gz"
+NCURSES_URL="https://ftp.gnu.org/gnu/ncurses/${NCURSES_VERSION}.tar.gz"
 
 # GitHub repos that will be cloned with --depth 1
 declare -A GITHUB_REPOS=(
@@ -110,6 +112,7 @@ download_sources() {
         download_file "$ZLIB_URL" "zlib.tar.gz" &
         download_file "$XZ_URL" "xz.tar.gz" &
         download_file "$LIBFFI_URL" "libffi.tar.gz" &
+        download_file "$NCURSES_URL" "ncurses.tar.gz" &
         wait
     }
 
@@ -134,6 +137,7 @@ prepare_sources() {
     [ ! -d zlib ] && tar -xf "${DOWNLOAD_DIR}/zlib.tar.gz" && mv "$ZLIB_VERSION" zlib
     [ ! -d xz ] && tar -xf "${DOWNLOAD_DIR}/xz.tar.gz" && mv "$XZ_VERSION" xz
     [ ! -d libffi ] && tar -xf "${DOWNLOAD_DIR}/libffi.tar.gz" && mv "$LIBFFI_VERSION" libffi
+    [ ! -d ncurses ] && tar -xf "${DOWNLOAD_DIR}/ncurses.tar.gz" && mv "$NCURSES_VERSION" ncurses
 
     for repo_name in "${!GITHUB_REPOS[@]}"; do
         [ ! -d "$repo_name" ] && [ -d "${DOWNLOAD_DIR}/$repo_name" ] && cp -r "${DOWNLOAD_DIR}/$repo_name" .
