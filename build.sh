@@ -26,6 +26,19 @@ if [[ -z "$ANDROID_NDK_ROOT" ]]; then
 	exit 1
 fi
 
+if [ -z "$ANDROID_NDK_ZIP" ]; then
+    echo "Error: ANDROID_NDK_ZIP is not set. Aborting."
+    exit 1
+elif [ ! -f "$ANDROID_NDK_ZIP" ]; then
+    echo "Error: ANDROID_NDK_ZIP file '$ANDROID_NDK_ZIP' does not exist. Aborting."
+    exit 1
+fi
+
+if [ -z "$ANDROID_NDK_VERSION" ]; then
+    echo "Error: ANDROID_NDK_VERSION is not set. Aborting."
+    exit 1
+fi
+
 if [[ ! -d "$ANDROID_NDK_ROOT" ]]; then
 	echo "ERROR: ANDROID_NDK_ROOT directory does not exist: $ANDROID_NDK_ROOT"
 	exit 1
@@ -657,7 +670,24 @@ build_zstd
 build_libffi
 build_libxml2
 build_ncurses
+build_yasm
 build_llvm
 
-cd "$BUILD_DIR"
-tar -czf "$ROOT_DIR/llvm-${ARCH}.tar.gz" prefix
+
+mkdir -p "$ROOT_DIR/output"
+export OUTPUT="$ROOT_DIR/output"
+unzip "$ANDROID_NDK_ZIP" -d "$OUTPUT"
+mv "$OUTPUT"/android-ndk* "$OUTPUT"/android-ndk
+export ANDROID_NDK_NEW_ROOT="$OUTPUT/android-ndk"
+export NDK_BIN_DIR="$ANDROID_NDK_NEW_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
+rm -f "$NDK_BIN_DIR"/clang*
+rm -f "$NDK_BIN_DIR"/ll*
+mv "$PREFIX"/bin/clang* "$NDK_BIN_DIR"/
+mv "$PREFIX"/bin/ll* "$NDK_BIN_DIR"/
+mv "$PREFIX/bin/yasm" "$NDK_BIN_DIR"/
+cp -r "$PREFIX"/lib/clang/* "$NDK_BIN_DIR"/../lib/clang/
+"$STRIP_ABS" "$NDK_BIN_DIR"/* || true
+cd "$OUTPUT"
+mv android-ndk android-ndk-${ANDROID_NDK_VERSION}
+zip -r -y -9 "${ROOT_DIR}/android-ndk-${ANDROID_NDK_VERSION}.zip" "android-ndk-${ANDROID_NDK_VERSION}"
+
