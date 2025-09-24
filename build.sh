@@ -550,7 +550,7 @@ build_yasm() {
         --disable-dependency-tracking \
         CC="$CC_ABS" \
         CFLAGS="$CFLAGS" \
-        LDFLAGS="$LDFLAGS"
+        LDFLAGS="$LDFLAGS -static"
 
     
     make -j"$(nproc)"
@@ -670,8 +670,8 @@ build_zstd
 build_libffi
 build_libxml2
 build_ncurses
-build_yasm
 build_llvm
+build_yasm
 
 
 mkdir -p "$ROOT_DIR/output"
