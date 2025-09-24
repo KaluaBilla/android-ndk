@@ -518,6 +518,33 @@ build_ncurses() {
 	echo "✔ ncurses built successfully"
 }
 
+build_yasm() {
+    echo "[+] Building YASM for $ARCH..."
+    cd "$BUILD_DIR/yasm" || exit 1
+
+    # Clean previous builds
+    (make clean && make distclean) || true
+    autoreconf -fi  
+
+    set_autotools_env
+
+    ./configure \
+        --prefix="$PREFIX" \
+        --host="$HOST" \
+        --enable-static \
+        --disable-shared \
+        --disable-nls \
+        --disable-dependency-tracking \
+        CC="$CC_ABS" \
+        CFLAGS="$CFLAGS" \
+        LDFLAGS="$LDFLAGS"
+
+    
+    make -j"$(nproc)"
+    make install
+
+    echo "✔ YASM built successfully"
+}
 
 build_llvm() {
     echo "[+] Building LLVM for Android NDK replacement ($ARCH)..."
