@@ -631,3 +631,6 @@ build_libffi
 build_libxml2
 build_ncurses
 build_llvm
+
+cd "$BUILD_DIR"
+tar -czf "$ROOT_DIR/llvm-${ARCH}.tar.gz" prefix
