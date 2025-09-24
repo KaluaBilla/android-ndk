@@ -61,7 +61,7 @@ jobs:
         with:
           name: llvm-${{ matrix.arch }}
           path: |
-            ${{ github.workspace }}/*.zip
+            ${{ github.workspace }}/*.xz
 
   release:
     runs-on: ubuntu-latest
@@ -88,6 +88,6 @@ jobs:
             android-ndk build artifacts
 
             **Build Date:** ${{ env.BUILD_DATE }}
-          files: artifacts/**/*.zip
+          files: artifacts/**/*.xz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
