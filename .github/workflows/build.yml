@@ -1,4 +1,4 @@
-name: Build LLVM Android
+name: Build Android NDK
 
 on:
   workflow_dispatch:
@@ -57,7 +57,7 @@ jobs:
           ARCH: ${{ matrix.arch }}
         run: bash ${{ github.workspace }}/build.sh
 
-      - name: Upload LLVM ZIP as artifact
+      - name: Upload NDK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: llvm-${{ matrix.arch }}
@@ -83,10 +83,10 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: llvm-${{ github.run_number }}
-          name: "LLVM Android Build ${{ github.run_number }}"
+          tag_name: android-ndk-${{ github.run_number }}
+          name: "Android NDK Build ${{ github.run_number }}"
           body: |
-            LLVM Android build artifacts
+            android-ndk build artifacts
 
             **Build Date:** ${{ env.BUILD_DATE }}
           files: artifacts/**/*.zip
