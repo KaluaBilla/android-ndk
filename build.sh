@@ -520,7 +520,7 @@ build_ncurses() {
 
 
 build_llvm() {
-    echo "[+] Building LLVM for $ARCH..."
+    echo "[+] Building LLVM for Android NDK replacement ($ARCH)..."
     cd "$BUILD_DIR/llvm-project" || exit 1
     
     rm -rf build && mkdir build && cd build
@@ -541,7 +541,7 @@ build_llvm() {
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$NATIVE_BUILD_DIR" \
             -DLLVM_TARGETS_TO_BUILD="X86" \
-			-DCMAKE_C_COMPILER="$(which gcc)" \
+            -DCMAKE_C_COMPILER="$(which gcc)" \
             -DCMAKE_CXX_COMPILER="$(which g++)" \
             -DLLVM_ENABLE_PROJECTS="clang" \
             -DLLVM_BUILD_TOOLS=ON \
@@ -551,19 +551,18 @@ build_llvm() {
             -DLLVM_INCLUDE_DOCS=OFF \
             -DLLVM_OPTIMIZED_TABLEGEN=ON
             
-        # Build the specific tablegen tools we need
+        # Build only the tablegen tools we need
         ninja -j"$(nproc)" llvm-tblgen clang-tblgen llvm-min-tblgen
         
-       if [[ ! -f "bin/llvm-tblgen" ]] || [[ ! -f "bin/clang-tblgen" ]] || [[ ! -f "bin/llvm-min-tblgen" ]]; then
-    echo "ERROR: Failed to build tablegen tools"
-    exit 1
-fi
-
+        if [[ ! -f "bin/llvm-tblgen" ]] || [[ ! -f "bin/clang-tblgen" ]] || [[ ! -f "bin/llvm-min-tblgen" ]]; then
+            echo "ERROR: Failed to build tablegen tools"
+            exit 1
+        fi
         
         cd ../build
     fi
 
-    # LLVM-specific CMake flags
+
     local LLVM_CMAKE_FLAGS=(
         "${MINIMAL_CMAKE_FLAGS[@]}"
         "-DCMAKE_CROSSCOMPILING=ON"
@@ -571,32 +570,68 @@ fi
         "-DCLANG_TABLEGEN=$CLANG_TBLGEN"
         "-DLLVM_DEFAULT_TARGET_TRIPLE=$CLANG_TRIPLE"
         "-DLLVM_TARGET_ARCH=$ARCH"
+        
+        
         "-DLLVM_TARGETS_TO_BUILD=AArch64;ARM;X86;RISCV"
+        
+        
         "-DLLVM_ENABLE_PROJECTS=clang;lld"
+        
+        # Build configuration
         "-DLLVM_BUILD_RUNTIME=OFF"
-        "-DLLVM_BUILD_TOOLS=ON"
-        "-DLLVM_BUILD_UTILS=ON"
-        "-DLLVM_ENABLE_TERMINFO=ON"
-        "-DLLVM_ENABLE_LIBEDIT=OFF"
-        "-DLLVM_ENABLE_LIBXML2=ON"
-        "-DLLVM_ENABLE_ZLIB=ON"
         "-DLLVM_BUILD_STATIC=ON"
         "-DBUILD_SHARED_LIBS=OFF"
+        
         "-DLLVM_INCLUDE_TESTS=OFF"
         "-DLLVM_INCLUDE_BENCHMARKS=OFF"
         "-DLLVM_INCLUDE_EXAMPLES=OFF"
         "-DLLVM_INCLUDE_DOCS=OFF"
-        "-DLIBXML2_LIBRARY=$PREFIX/lib/libxml2.a"
-        "-DLIBXML2_INCLUDE_DIR=$PREFIX/include/libxml2/libxml"
+        
+        # Disable Clang tools we don't need
+        "-DCLANG_BUILD_TOOLS=OFF"                    # Disables c-index-test and others
+        "-DCLANG_ENABLE_STATIC_ANALYZER=OFF"         # No static analyzer
+        "-DCLANG_ENABLE_ARCMT=OFF"                   # No ARC migration tool
+        "-DCLANG_TOOL_C_INDEX_TEST_BUILD=OFF"        # Explicitly disable c-index-test
+        "-DCLANG_TOOL_LIBCLANG_BUILD=OFF"            # No libclang
+        "-DCLANG_TOOL_CLANG_FORMAT_BUILD=OFF"        # No clang-format
+        "-DCLANG_TOOL_CLANG_FUZZER_BUILD=OFF"        # No fuzzer
+        
+        # Build only essential LLVM tools for NDK
+        "-DLLVM_BUILD_TOOLS=ON"
+        "-DLLVM_BUILD_UTILS=OFF"                     # Disable non-essential utils
+        
+        # Disable features not needed for NDK
+        "-DLLVM_ENABLE_TERMINFO=OFF"
+        "-DLLVM_ENABLE_LIBEDIT=OFF"
+        "-DLLVM_ENABLE_LIBXML2=OFF"                  # Not needed for basic compilation
+        "-DLLVM_ENABLE_ZLIB=ON"                      # Keep zlib for compression
+        
+        # Essential tools for NDK (these will be built)
+        "-DLLVM_TOOL_LLVM_AR_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_RANLIB_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_STRIP_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_OBJDUMP_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_OBJCOPY_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_READELF_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_ADDR2LINE_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_NM_BUILD=ON"
+        "-DLLVM_TOOL_LLVM_SIZE_BUILD=ON"
+        
+        # Zlib settings
         "-DZLIB_LIBRARY=$PREFIX/lib/libz.a"
         "-DZLIB_INCLUDE_DIR=$PREFIX/include"
     )
     
+    echo "[+] Configuring LLVM with NDK-focused options..."
     cmake ../llvm -G Ninja "${LLVM_CMAKE_FLAGS[@]}"
+    
+    echo "[+] Building LLVM (this will take a while)..."
     ninja -j"$(nproc)"
+    
+    echo "[+] Installing LLVM..."
     ninja install
     
-    echo "✓ LLVM built successfully"
+    echo "✓ LLVM built successfully for NDK replacement"
 }
 
 download_sources
