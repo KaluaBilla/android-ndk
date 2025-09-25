@@ -686,7 +686,7 @@ mv "$PREFIX"/bin/clang* "$NDK_BIN_DIR"/
 mv "$PREFIX"/bin/ll* "$NDK_BIN_DIR"/
 mv "$PREFIX/bin/yasm" "$NDK_BIN_DIR"/
 cp -r "$PREFIX"/lib/clang/* "$NDK_BIN_DIR"/../lib/clang/
-"${STRIP}" "${NDK_BIN_DIR}"/* || true
+find "$NDK_BIN_DIR" -type f -executable -exec "$STRIP" {} + || true
 if [ "${ARCH}" != "x86_64" ]; then
   cd "$NDK_BIN_DIR"/../../ || exit 1
   ln -s "linux-${ARCH}" linux-x86_64
