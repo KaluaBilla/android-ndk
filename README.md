@@ -1,8 +1,10 @@
 # android-ndk
-android-ndk builds for aarch64
+Custom Android NDK builds for different architectures
 
-
-
-- This workflow builds LLVM for AArch64 and replaces the binaries in the official Google x86_64 Linux NDK to provide a ready-to-use custom Android NDK for AArch64.
-
-- Compatibility is not guaranteed, and contributions or PRs are welcome.
+Google already provides prebuilt Android NDK packages for **Linux x86_64**, so there is no need to rebuild the entire NDK from scratch.  
+Instead, this project clones:
+```
+https://android.googlesource.com/toolchain/llvm-project
+```
+Builds LLVM/Clang, and replaces the binaries inside the official Google Android NDK with the newly built ones.
+By this we get a working android ndk for different arch 
