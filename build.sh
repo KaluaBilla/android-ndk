@@ -3,26 +3,14 @@
 set -e
 
 ARCH="${1:-$ARCH}"
-API_LEVEL="${2:-$API_LEVEL}"
-API_LEVEL="${API_LEVEL:-29}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-VALID_ARCHES="aarch64 armv7 x86 x86_64 riscv64"
+VALID_ARCHES="aarch64 armv7 x86 riscv64"
 
 if [[ -z "$ARCH" || ! " $VALID_ARCHES " =~ $ARCH ]]; then
-	echo "Usage: $0 <aarch64|armv7|x86|x86_64|riscv64> [API_LEVEL]"
-	echo "Default API_LEVEL: 29"
-	exit 1
-fi
-
-if [[ "$API_LEVEL" -gt 35 ]]; then
-	echo "ERROR: API_LEVEL greater than 35 is not supported (got $API_LEVEL)"
-	exit 1
-fi
-
-if [[ -z "$ANDROID_NDK_ROOT" ]]; then
-	echo "ERROR: ANDROID_NDK_ROOT environment variable is not set"
+	echo "Usage: $0 <aarch64|armv7|x86|riscv64>"
+	echo "Make sure musl cross-compiler is in PATH"
 	exit 1
 fi
 
@@ -39,50 +27,23 @@ if [ -z "$ANDROID_NDK_VERSION" ]; then
     exit 1
 fi
 
-if [[ ! -d "$ANDROID_NDK_ROOT" ]]; then
-	echo "ERROR: ANDROID_NDK_ROOT directory does not exist: $ANDROID_NDK_ROOT"
-	exit 1
-fi
-
-if [[ "$ARCH" == "riscv64" && "$API_LEVEL" -lt 35 ]]; then
-	export API_LEVEL=35
-fi
-
-case "$(uname -s)" in
-Linux) HOST_OS=linux ;;
-Darwin) HOST_OS=darwin ;;
-CYGWIN* | MINGW* | MSYS*) HOST_OS=windows ;;
-*)
-	echo "ERROR: Unsupported host OS: $(uname -s)"
-	exit 1
-	;;
-esac
-
+# Map architecture to musl triple prefixes
 case "$ARCH" in
 aarch64)
-	HOST=aarch64-linux-android
-	ANDROID_ABI=arm64-v8a
-	CLANG_TRIPLE=aarch64-linux-android
+	MUSL_PREFIX="aarch64-linux-musl"
+	HOST=aarch64-linux-musl
 	;;
 armv7)
-	HOST=arm-linux-androideabi
-	ANDROID_ABI=armeabi-v7a
-	CLANG_TRIPLE=armv7a-linux-androideabi
+	MUSL_PREFIX="armv7l-linux-musleabihf"
+	HOST=armv7l-linux-musleabihf
 	;;
 x86)
-	HOST=i686-linux-android
-	ANDROID_ABI=x86
-	CLANG_TRIPLE=i686-linux-android
-	;;
-x86_64)
-	HOST=x86_64-linux-android
-	ANDROID_ABI=x86_64
-	CLANG_TRIPLE=x86_64-linux-android
+	MUSL_PREFIX="i686-linux-musl"
+	HOST=i686-linux-musl
 	;;
 riscv64)
-	HOST=riscv64-linux-android
-	ANDROID_ABI=riscv64
-	CLANG_TRIPLE=riscv64-linux-android
+	MUSL_PREFIX="riscv64-linux-musl"
+	HOST=riscv64-linux-musl
 	;;
 *)
 	echo "Unsupported architecture: $ARCH"
@@ -90,27 +51,49 @@ riscv64)
 	;;
 esac
 
-TOOLCHAIN_ROOT="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/$HOST_OS-x86_64"
+# Check if required binaries exist in PATH
+REQUIRED_TOOLS=("${MUSL_PREFIX}-gcc" "${MUSL_PREFIX}-g++" "${MUSL_PREFIX}-ar" "${MUSL_PREFIX}-ranlib" "${MUSL_PREFIX}-strip")
 
-export CC="${TOOLCHAIN_ROOT}/bin/${CLANG_TRIPLE}${API_LEVEL}-clang"
-export CXX="${TOOLCHAIN_ROOT}/bin/${CLANG_TRIPLE}${API_LEVEL}-clang++"
-export AR="${TOOLCHAIN_ROOT}/bin/llvm-ar"
-export RANLIB="${TOOLCHAIN_ROOT}/bin/llvm-ranlib"
-export STRIP="${TOOLCHAIN_ROOT}/bin/llvm-strip"
-export NM="${TOOLCHAIN_ROOT}/bin/llvm-nm"
-export STRINGS="${TOOLCHAIN_ROOT}/bin/llvm-strings"
-export OBJDUMP="${TOOLCHAIN_ROOT}/bin/llvm-objdump"
-export OBJCOPY="${TOOLCHAIN_ROOT}/bin/llvm-objcopy"
+for tool in "${REQUIRED_TOOLS[@]}"; do
+	if ! command -v "$tool" >/dev/null 2>&1; then
+		echo "ERROR: Required tool not found in PATH: $tool"
+		echo "Please install musl cross-compiler and add to PATH"
+		exit 1
+	fi
+done
+
+echo "[+] Found musl toolchain in PATH"
+echo "[+] Architecture: $ARCH ($MUSL_PREFIX)"
+
+# Set up toolchain environment
+export CC="${MUSL_PREFIX}-gcc"
+export CXX="${MUSL_PREFIX}-g++"
+export AR="${MUSL_PREFIX}-ar"
+export RANLIB="${MUSL_PREFIX}-ranlib"
+export STRIP="${MUSL_PREFIX}-strip"
+export NM="${MUSL_PREFIX}-nm"
+export STRINGS="${MUSL_PREFIX}-strings"
+export OBJDUMP="${MUSL_PREFIX}-objdump"
+export OBJCOPY="${MUSL_PREFIX}-objcopy"
+
+# Get sysroot from compiler
+SYSROOT=$($CC -print-sysroot)
+if [[ -z "$SYSROOT" || ! -d "$SYSROOT" ]]; then
+	echo "ERROR: Could not determine sysroot from compiler"
+	exit 1
+fi
+
+echo "[+] Sysroot: $SYSROOT"
 
 case "$ARCH" in
-x86 | x86_64)
+x86)
 	if command -v nasm >/dev/null 2>&1; then
 		export AS=nasm
 	else
 		export AS="$CC"
 	fi
 	;;
-aarch64 | armv7)
+aarch64 | armv7 | riscv64)
 	export AS="$CC"
 	;;
 *)
@@ -143,7 +126,7 @@ RANLIB_ABS=$(resolve_absolute_path "$RANLIB")
 STRIP_ABS=$(resolve_absolute_path "$STRIP")
 NM_ABS=$(resolve_absolute_path "$NM")
 
-BUILD_DIR="$ROOT_DIR/build/android/$ARCH"
+BUILD_DIR="$ROOT_DIR/build/musl/$ARCH"
 PREFIX="$BUILD_DIR/prefix"
 
 mkdir -p "$BUILD_DIR" "$PREFIX"
@@ -153,7 +136,7 @@ mkdir -p "$PREFIX/lib64/pkgconfig"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig:$PKG_CONFIG_PATH"
 export PKG_CONFIG_ALLOW_CROSS=1
 
-export PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+export PATH="$PATH"
 
 SIZE_CFLAGS="-O3 -ffunction-sections -fdata-sections"
 SIZE_CXXFLAGS="-O3 -ffunction-sections -fdata-sections"
@@ -162,16 +145,14 @@ SIZE_LDFLAGS="-Wl,--gc-sections"
 MATH_FLAGS="-fno-math-errno -fno-trapping-math -fassociative-math"
 PERF_FLAGS="$MATH_FLAGS -funroll-loops -fomit-frame-pointer"
 
-ANDROID_FLAGS="-fvisibility=default -fPIC"
+MUSL_FLAGS="-fvisibility=default -fPIC"
 
-export CFLAGS="-I${PREFIX}/include $SIZE_CFLAGS $PERF_FLAGS $ANDROID_FLAGS -D_SYS_USER_H=1 -DNDEBUG"
-export CXXFLAGS="$SIZE_CXXFLAGS $PERF_FLAGS $ANDROID_FLAGS -DNDEBUG"
+export CFLAGS="-I${PREFIX}/include $SIZE_CFLAGS $PERF_FLAGS $MUSL_FLAGS -DNDEBUG"
+export CXXFLAGS="$SIZE_CXXFLAGS $PERF_FLAGS $MUSL_FLAGS -DNDEBUG"
 export CPPFLAGS="-I${PREFIX}/include -DNDEBUG -fPIC"
 export LDFLAGS="-L${PREFIX}/lib -L${PREFIX}/lib64 $SIZE_LDFLAGS -fPIC"
 
-export SYSROOT="$TOOLCHAIN_ROOT/sysroot"
-
-
+export SYSROOT="$SYSROOT"
 
 COMMON_AUTOTOOLS_FLAGS=(
 	"--prefix=$PREFIX"
@@ -179,7 +160,6 @@ COMMON_AUTOTOOLS_FLAGS=(
 	"--enable-static"
 	"--disable-shared"
 )
-
 
 set_autotools_env() {
 	export CC="$CC_ABS"
@@ -193,7 +173,6 @@ set_autotools_env() {
 	export CPPFLAGS="-I$PREFIX/include"
 	export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 }
-
 
 autotools_build() {
 	local project_name="$1"
@@ -211,30 +190,8 @@ autotools_build() {
 	make -j"$(nproc)"
 	make install
 	
-	echo "✔ $project_name built successfully"
+	echo "✓ $project_name built successfully"
 }
-
-
-autotools_build_autoreconf() {
-	local project_name="$1"
-	local build_dir="$2"
-	shift 2
-	
-	echo "[+] Building $project_name for $ARCH..."
-	cd "$build_dir" || exit 1
-	
-	(make clean && make distclean) || true
-	autoreconf -fi
-	
-	set_autotools_env
-	
-	./configure "${COMMON_AUTOTOOLS_FLAGS[@]}" "$@"
-	make -j"$(nproc)"
-	make install
-	
-	echo "✔ $project_name built successfully"
-}
-
 
 make_build() {
 	local project_name="$1"
@@ -260,7 +217,7 @@ make_build() {
 	
 	make "$install_target" PREFIX="$PREFIX"
 	
-	echo "✔ $project_name built successfully"
+	echo "✓ $project_name built successfully"
 }
 
 generate_pkgconfig() {
@@ -294,41 +251,6 @@ Cflags: $cflags
 EOF
 }
 
-
-get_asm_flags() {
-	case "$ARCH" in
-		x86|riscv64) echo "--disable-asm" ;;
-		*) echo "" ;;
-	esac
-}
-
-get_host_override() {
-	case "$ARCH" in
-		riscv64) echo "riscv64-unknown-linux-gnu" ;;
-		*) echo "$HOST" ;;
-	esac
-}
-
-COMMON_CMAKE_FLAGS=(
-	"-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake"
-	"-DANDROID_ABI=$ANDROID_ABI"
-	"-DANDROID_PLATFORM=android-$API_LEVEL"
-	"-DANDROID_NDK=$ANDROID_NDK_ROOT"
-	"-DCMAKE_BUILD_TYPE=Release"
-	"-DCMAKE_INSTALL_PREFIX=$PREFIX"
-	"-DCMAKE_C_COMPILER=$CC_ABS"
-	"-DCMAKE_CXX_COMPILER=$CXX_ABS"
-	"-DCMAKE_C_FLAGS=$CFLAGS -I$PREFIX/include"
-	"-DCMAKE_CXX_FLAGS=$CXXFLAGS -I$PREFIX/include"
-	"-DCMAKE_EXE_LINKER_FLAGS=$LDFLAGS -L$PREFIX/lib"
-	"-DCMAKE_AR=$AR_ABS"
-	"-DCMAKE_RANLIB=$RANLIB_ABS"
-	"-DCMAKE_STRIP=$STRIP_ABS"
-	"-DCMAKE_FIND_ROOT_PATH=$SYSROOT;$PREFIX"
-	"-DCMAKE_SYSROOT=$SYSROOT"
-	"-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
-)
-
 MINIMAL_CMAKE_FLAGS=(
 	"-DCMAKE_BUILD_TYPE=Release"
 	"-DCMAKE_INSTALL_PREFIX=$PREFIX"
@@ -340,48 +262,8 @@ MINIMAL_CMAKE_FLAGS=(
 	"-DCMAKE_C_FLAGS=$CFLAGS"
 	"-DCMAKE_CXX_FLAGS=$CXXFLAGS"
 	"-DCMAKE_EXE_LINKER_FLAGS=$LDFLAGS"
+	"-DCMAKE_SYSROOT=$SYSROOT"
 )
-
-
-cmake_build() {
-	local project_name="$1"
-	local build_dir="$2"
-	local use_common_flags="${3:-true}"  # default to common flags
-	shift 3
-	
-	echo "[+] Building $project_name for $ARCH..."
-	cd "$build_dir" || exit 1
-	
-	rm -rf build && mkdir build && cd build
-	
-	local cmake_flags=()
-	if [ "$use_common_flags" = "true" ]; then
-		cmake_flags=("${COMMON_CMAKE_FLAGS[@]}")
-	else
-		cmake_flags=("${MINIMAL_CMAKE_FLAGS[@]}")
-	fi
-	
-	cmake .. -G Ninja "${cmake_flags[@]}" "$@"
-	ninja -j"$(nproc)"
-	ninja install
-	
-	echo "✓ $project_name built successfully"
-}
-
-cmake_ninja_build() {
-	cmake_build "$@"
-}
-
-get_simd_flags() {
-	case "$ARCH" in
-		x86|x86_64|i686)
-			echo "-DENABLE_SIMD=ON"
-			;;
-		*)
-			echo "-DENABLE_SIMD=OFF"
-			;;
-	esac
-}
 
 CROSS_FILE_TEMPLATE="$BUILD_DIR/.meson-cross-template"
 DOWNLOADER_SCRIPT="${ROOT_DIR}/download_sources.sh"
@@ -395,7 +277,7 @@ sanitize_flags() {
 
 create_meson_cross_file() {
     local output_file="$1"
-    local system="${2:-android}"  # default to android
+    local system="${2:-linux}"  # default to linux for musl
     
     local S_CFLAGS=$(sanitize_flags "$CFLAGS")
     local S_CXXFLAGS=$(sanitize_flags "$CXXFLAGS") 
@@ -446,12 +328,11 @@ meson_build() {
     ninja -C build -j"$(nproc)"
     ninja -C build install
     
-    echo "✔ $project_name built successfully"
+    echo "✓ $project_name built successfully"
 }
 
 init_cross_files() {
-    create_meson_cross_file "$CROSS_FILE_TEMPLATE" "android"
-    create_meson_cross_file "$CROSS_FILE_TEMPLATE.linux" "linux"
+    create_meson_cross_file "$CROSS_FILE_TEMPLATE" "linux"
 }
 
 build_zlib() {
@@ -463,7 +344,7 @@ build_zlib() {
 	make -j"$(nproc)" CFLAGS="$CFLAGS"
 	make install
 	
-	echo "✔ zlib built successfully"
+	echo "✓ zlib built successfully"
 }
 
 build_liblzma() {
@@ -481,8 +362,7 @@ build_lz4() {
 }
 
 build_zstd() {
-	meson_build "zstd" "$BUILD_DIR/zstd/build/meson" "$CROSS_FILE_TEMPLATE" \
-
+	meson_build "zstd" "$BUILD_DIR/zstd/build/meson" "$CROSS_FILE_TEMPLATE"
 }
 
 build_libffi() {
@@ -528,7 +408,7 @@ build_ncurses() {
 	ln -sf libncursesw.a libncurses.a
 	cd "$PREFIX/include" && ln -s ncursesw ncurses
 	
-	echo "✔ ncurses built successfully"
+	echo "✓ ncurses built successfully"
 }
 
 build_yasm() {
@@ -552,15 +432,14 @@ build_yasm() {
         CFLAGS="$CFLAGS" \
         LDFLAGS="$LDFLAGS -static"
 
-    
     make -j"$(nproc)"
     make install
 
-    echo "✔ YASM built successfully"
+    echo "✓ YASM built successfully"
 }
 
 build_llvm() {
-    echo "[+] Building LLVM for Android NDK replacement ($ARCH)..."
+    echo "[+] Building LLVM for musl ($ARCH)..."
     cd "$BUILD_DIR/llvm-project" || exit 1
     
     rm -rf build && mkdir build && cd build
@@ -602,52 +481,54 @@ build_llvm() {
         cd ../build
     fi
 
+    # Determine target triple based on musl prefix
+    local TARGET_TRIPLE="$MUSL_PREFIX"
 
     local LLVM_CMAKE_FLAGS=(
-    "${MINIMAL_CMAKE_FLAGS[@]}"
-    "-DCMAKE_CROSSCOMPILING=ON"
-    "-DLLVM_TABLEGEN=$LLVM_TBLGEN"
-    "-DCLANG_TABLEGEN=$CLANG_TBLGEN"
-    "-DLLVM_DEFAULT_TARGET_TRIPLE=$CLANG_TRIPLE"
-    "-DLLVM_TARGET_ARCH=$ARCH"
+        "${MINIMAL_CMAKE_FLAGS[@]}"
+        "-DCMAKE_CROSSCOMPILING=ON"
+        "-DLLVM_TABLEGEN=$LLVM_TBLGEN"
+        "-DCLANG_TABLEGEN=$CLANG_TBLGEN"
+        "-DLLVM_DEFAULT_TARGET_TRIPLE=$TARGET_TRIPLE"
+        "-DLLVM_TARGET_ARCH=$ARCH"
+        
+        "-DLLVM_TARGETS_TO_BUILD=AArch64;ARM;X86;RISCV"
+        "-DLLVM_ENABLE_PROJECTS=clang;lld"
+        
+        # Build configuration
+        "-DLLVM_BUILD_RUNTIME=OFF"
+        "-DLLVM_BUILD_STATIC=ON"
+        "-DBUILD_SHARED_LIBS=OFF"
+        
+        "-DLLVM_INCLUDE_TESTS=OFF"
+        "-DLLVM_INCLUDE_BENCHMARKS=OFF"
+        "-DLLVM_INCLUDE_EXAMPLES=OFF"
+        "-DLLVM_INCLUDE_DOCS=OFF"
+        
+        # Clang tools configuration
+        "-DCLANG_BUILD_TOOLS=ON"
+        "-DCLANG_ENABLE_STATIC_ANALYZER=OFF"
+        "-DCLANG_ENABLE_ARCMT=OFF"
+        "-DCLANG_TOOL_C_INDEX_TEST_BUILD=OFF"
+        "-DCLANG_TOOL_LIBCLANG_BUILD=OFF"
+        
+        # LLVM tools configuration  
+        "-DLLVM_BUILD_TOOLS=ON"
+        "-DLLVM_BUILD_UTILS=OFF"
+        
+        # Features configuration
+        "-DLLVM_ENABLE_LIBEDIT=OFF"
+        "-DLLVM_ENABLE_LIBXML2=ON"
+        "-DLLVM_ENABLE_ZLIB=ON"
+        
+        # Library paths
+        "-DLIBXML2_LIBRARY=$PREFIX/lib/libxml2.a"
+        "-DLIBXML2_INCLUDE_DIR=$PREFIX/include/libxml2/libxml"
+        "-DZLIB_LIBRARY=$PREFIX/lib/libz.a"
+        "-DZLIB_INCLUDE_DIR=$PREFIX/include"
+    )
     
-    "-DLLVM_TARGETS_TO_BUILD=AArch64;ARM;X86;RISCV"
-    "-DLLVM_ENABLE_PROJECTS=clang;lld"
-    
-    # Build configuration
-    "-DLLVM_BUILD_RUNTIME=OFF"
-    "-DLLVM_BUILD_STATIC=ON"
-    "-DBUILD_SHARED_LIBS=OFF"
-    
-    "-DLLVM_INCLUDE_TESTS=OFF"
-    "-DLLVM_INCLUDE_BENCHMARKS=OFF"
-    "-DLLVM_INCLUDE_EXAMPLES=OFF"
-    "-DLLVM_INCLUDE_DOCS=OFF"
-    
-    # Clang tools configuration - KEEP useful ones, disable problematic ones
-    "-DCLANG_BUILD_TOOLS=ON"                        # Keep most Clang tools
-    "-DCLANG_ENABLE_STATIC_ANALYZER=OFF"            # Disable static analyzer
-    "-DCLANG_ENABLE_ARCMT=OFF"                      # Disable ARC migration tool
-    "-DCLANG_TOOL_C_INDEX_TEST_BUILD=OFF"           # Disable c-index-test
-    "-DCLANG_TOOL_LIBCLANG_BUILD=OFF"               # Disable libclang
-    
-    # LLVM tools configuration  
-    "-DLLVM_BUILD_TOOLS=ON"                         # Keep LLVM tools
-    "-DLLVM_BUILD_UTILS=OFF"                        
-    
-    # Features configuration
-    "-DLLVM_ENABLE_LIBEDIT=OFF"                     
-    "-DLLVM_ENABLE_LIBXML2=ON"                      
-    "-DLLVM_ENABLE_ZLIB=ON"                         
-    
-    # Library paths
-    "-DLIBXML2_LIBRARY=$PREFIX/lib/libxml2.a"       # Only if you built libxml2
-    "-DLIBXML2_INCLUDE_DIR=$PREFIX/include/libxml2/libxml"
-    "-DZLIB_LIBRARY=$PREFIX/lib/libz.a"
-    "-DZLIB_INCLUDE_DIR=$PREFIX/include"
-)
-    
-    echo "[+] Configuring LLVM with NDK-focused options..."
+    echo "[+] Configuring LLVM for musl..."
     cmake ../llvm -G Ninja "${LLVM_CMAKE_FLAGS[@]}"
     
     echo "[+] Building LLVM (this will take a while)..."
@@ -656,8 +537,13 @@ build_llvm() {
     echo "[+] Installing LLVM..."
     ninja install
     
-    echo "✓ LLVM built successfully for NDK replacement"
+    echo "✓ LLVM built successfully for musl"
 }
+
+# Main build sequence
+echo "[+] Starting musl cross-compilation build for $ARCH"
+echo "[+] Host triple: $HOST"
+echo "[+] Sysroot: $SYSROOT"
 
 download_sources
 prepare_sources
@@ -673,9 +559,11 @@ build_ncurses
 build_llvm
 build_yasm
 
-
+echo "[+] Creating output package..."
 mkdir -p "$ROOT_DIR/output"
 export OUTPUT="$ROOT_DIR/output"
+
+# Repackage Android NDK with new LLVM tools
 unzip "$ANDROID_NDK_ZIP" -d "$OUTPUT"
 mv "$OUTPUT"/android-ndk* "$OUTPUT"/android-ndk
 export ANDROID_NDK_NEW_ROOT="$OUTPUT/android-ndk"
@@ -686,7 +574,7 @@ mv "$PREFIX"/bin/clang* "$NDK_BIN_DIR"/
 mv "$PREFIX"/bin/ll* "$NDK_BIN_DIR"/
 mv "$PREFIX/bin/yasm" "$NDK_BIN_DIR"/
 cp -r "$PREFIX"/lib/clang/* "$NDK_BIN_DIR"/../lib/clang/
-find "$NDK_BIN_DIR" -type f -executable -exec "$STRIP" {} + || true
+find "$NDK_BIN_DIR" -type f -executable -exec "$STRIP_ABS" {} + || true
 if [ "${ARCH}" != "x86_64" ]; then
   cd "$NDK_BIN_DIR"/../../ || exit 1
   # create symlink linux-${ARCH} -> linux-x86_64
@@ -694,7 +582,9 @@ if [ "${ARCH}" != "x86_64" ]; then
 fi
 cd "$OUTPUT"
 mv android-ndk android-ndk-${ANDROID_NDK_VERSION}
-# zip -r -y -9 "${ROOT_DIR}/android-ndk-${ANDROID_NDK_VERSION}-${ARCH}.zip" "android-ndk-${ANDROID_NDK_VERSION}"
 
 tar -cf - "android-ndk-${ANDROID_NDK_VERSION}" \
   | xz -T0 -9 -c > "${ROOT_DIR}/android-ndk-${ANDROID_NDK_VERSION}-${ARCH}.tar.xz"
+
+echo "✓ Build completed successfully!"
+echo "✓ Output package: ${ROOT_DIR}/android-ndk-${ANDROID_NDK_VERSION}-${ARCH}.tar.xz"
