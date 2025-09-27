@@ -36,7 +36,7 @@ jobs:
           NDK_VERSION="r29-beta4"
           NDK_ZIP="android-ndk-${NDK_VERSION}-linux.zip"
           curl -LO https://dl.google.com/android/repository/${NDK_ZIP}
-          echo "ANDROID_NDK_ZIP=$HOME/${NDK_ZIP}" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ZIP=${{ github.workspace }}/${NDK_ZIP}" >> $GITHUB_ENV
           echo "ANDROID_NDK_VERSION=${NDK_VERSION}" >> $GITHUB_ENV
 
       - name: Download musl toolchain
