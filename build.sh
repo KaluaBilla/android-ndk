@@ -142,8 +142,7 @@ SIZE_CFLAGS="-O3 -ffunction-sections -fdata-sections"
 SIZE_CXXFLAGS="-O3 -ffunction-sections -fdata-sections"
 SIZE_LDFLAGS="-Wl,--gc-sections"
 
-MATH_FLAGS="-fno-math-errno -fno-trapping-math -fassociative-math"
-PERF_FLAGS="$MATH_FLAGS -funroll-loops -fomit-frame-pointer"
+PERF_FLAGS="-funroll-loops -fomit-frame-pointer"
 
 MUSL_FLAGS="-fvisibility=default -fPIC"
 
