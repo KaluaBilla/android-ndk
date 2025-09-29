@@ -133,6 +133,8 @@ mkdir -p "$BUILD_DIR" "$PREFIX"
 mkdir -p "$PREFIX/lib/pkgconfig"
 mkdir -p "$PREFIX/lib64/pkgconfig"
 
+
+unset PKG_CONFIG_PATH
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig:$PKG_CONFIG_PATH"
 export PKG_CONFIG_ALLOW_CROSS=1
 
