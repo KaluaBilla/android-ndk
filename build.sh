@@ -77,7 +77,7 @@ export OBJDUMP="${MUSL_PREFIX}-objdump"
 export OBJCOPY="${MUSL_PREFIX}-objcopy"
 
 # Get sysroot from compiler
-SYSROOT=$($CC -print-sysroot)
+export SYSROOT=$($CC --print-sysroot)
 if [[ -z "$SYSROOT" || ! -d "$SYSROOT" ]]; then
 	echo "ERROR: Could not determine sysroot from compiler"
 	exit 1
