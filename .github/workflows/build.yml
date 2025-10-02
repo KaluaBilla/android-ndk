@@ -1,4 +1,4 @@
-name: Build with musl toolchain
+name: Build Android NDK
 
 on:
   workflow_dispatch:
@@ -31,40 +31,22 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           pipx install meson
 
-      - name: Download Android NDK ZIP
+      - name: Install Android NDK (r29 beta4)
         run: |
+          cd $HOME
           NDK_VERSION="r29-beta4"
           NDK_ZIP="android-ndk-${NDK_VERSION}-linux.zip"
           curl -LO https://dl.google.com/android/repository/${NDK_ZIP}
-          echo "ANDROID_NDK_ZIP=${{ github.workspace }}/${NDK_ZIP}" >> $GITHUB_ENV
+          unzip ${NDK_ZIP}
+
+          echo "ANDROID_NDK_ROOT=$HOME/android-ndk-${NDK_VERSION}" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-${NDK_VERSION}" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ZIP=$HOME/${NDK_ZIP}" >> $GITHUB_ENV
           echo "ANDROID_NDK_VERSION=${NDK_VERSION}" >> $GITHUB_ENV
 
-      - name: Download musl toolchain
-        run: |
-          case "${{ matrix.arch }}" in
-            aarch64)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/aarch64-linux-musl-cross.tgz"
-              ;;
-            armv7)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/armv7l-linux-musleabihf-cross.tgz"
-              ;;
-            x86)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/i686-linux-musl-cross.tgz"
-              ;;
-            riscv64)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/riscv64-linux-musl-cross.tgz"
-              ;;
-            *)
-              echo "Unsupported ARCH: ${{ matrix.arch }}"
-              exit 1
-              ;;
-          esac
 
-          TOOLCHAIN_DIR="$HOME/musl-${{ matrix.arch }}"
-          mkdir -p "$TOOLCHAIN_DIR"
-          curl -L $URL | tar -xz -C "$TOOLCHAIN_DIR" --strip-components=1
-
-          echo "$TOOLCHAIN_DIR/bin" >> $GITHUB_PATH
+          TOOLCHAIN=$HOME/android-ndk-${NDK_VERSION}/toolchains/llvm/prebuilt/linux-x86_64/bin
+          echo "$TOOLCHAIN" >> $GITHUB_PATH
 
       - name: Set ARCH
         run: echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
@@ -74,7 +56,7 @@ jobs:
           ARCH: ${{ matrix.arch }}
         run: bash ${{ github.workspace }}/build.sh
 
-      - name: Upload build artifacts
+      - name: Upload NDK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: llvm-${{ matrix.arch }}
@@ -100,10 +82,10 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: musl-${{ github.run_number }}
-          name: "musl Build ${{ github.run_number }}"
+          tag_name: android-ndk-${{ github.run_number }}
+          name: "Android NDK Build ${{ github.run_number }}"
           body: |
-            musl build artifacts
+            android-ndk build artifacts
 
             **Build Date:** ${{ env.BUILD_DATE }}
           files: artifacts/**/*.xz
