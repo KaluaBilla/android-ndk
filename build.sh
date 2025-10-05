@@ -693,6 +693,15 @@ if [ "${ARCH}" != "x86_64" ]; then
   ln -sf "linux-x86_64" "linux-${ARCH}"
 fi
 cd "$OUTPUT"
+
+while IFS= read -r file; do
+    if file "$file" | grep -q 'bash script'; then
+        # replace first line with /bin/sh
+        sed -i '1s|^#!.*|#!/bin/sh|' "$file"
+        echo "Updated shebang: $file"
+    fi
+done < <(find "$NDK_BIN_DIR" -type f)
+
 mv android-ndk android-ndk-${ANDROID_NDK_VERSION}
 # zip -r -y -9 "${ROOT_DIR}/android-ndk-${ANDROID_NDK_VERSION}-${ARCH}.zip" "android-ndk-${ANDROID_NDK_VERSION}"
 
