@@ -151,7 +151,7 @@ MUSL_FLAGS="-fvisibility=default -fPIC"
 export CFLAGS="-I${PREFIX}/include $SIZE_CFLAGS $PERF_FLAGS $MUSL_FLAGS -DNDEBUG"
 export CXXFLAGS="$SIZE_CXXFLAGS $PERF_FLAGS $MUSL_FLAGS -DNDEBUG"
 export CPPFLAGS="-I${PREFIX}/include -DNDEBUG -fPIC"
-export LDFLAGS="-L${PREFIX}/lib -L${PREFIX}/lib64 $SIZE_LDFLAGS -fPIC -static"
+export LDFLAGS="-L${PREFIX}/lib -L${PREFIX}/lib64 $SIZE_LDFLAGS -fPIC"
 
 export SYSROOT="$SYSROOT"
 
@@ -457,7 +457,7 @@ build_yasm() {
         --disable-dependency-tracking \
         CC="$CC_ABS" \
         CFLAGS="$CFLAGS" \
-        LDFLAGS="$LDFLAGS"
+        LDFLAGS="$LDFLAGS -static"
 
     
     make -j"$(nproc)"
