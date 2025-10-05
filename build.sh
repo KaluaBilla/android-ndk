@@ -488,8 +488,8 @@ build_llvm() {
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$NATIVE_BUILD_DIR" \
             -DLLVM_TARGETS_TO_BUILD="X86" \
-            -DCMAKE_C_COMPILER="$(which gcc)" \
-            -DCMAKE_CXX_COMPILER="$(which g++)" \
+            -DCMAKE_C_COMPILER="/usr/bin/gcc" \
+            -DCMAKE_CXX_COMPILER="/usr/bin/g++" \
             -DLLVM_ENABLE_PROJECTS="clang" \
             -DLLVM_BUILD_TOOLS=ON \
             -DLLVM_INCLUDE_TESTS=OFF \
