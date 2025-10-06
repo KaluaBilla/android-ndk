@@ -499,7 +499,7 @@ build_llvm() {
             -DLLVM_OPTIMIZED_TABLEGEN=ON
             
         # Build only the tablegen tools we need
-        ninja -j"$(nproc)" llvm-tblgen clang-tblgen llvm-min-tblgen
+        ninja -j"$(nproc)" llvm-tblgen llvm-config clang-tblgen llvm-min-tblgen
         
         if [[ ! -f "bin/llvm-tblgen" ]] || [[ ! -f "bin/clang-tblgen" ]] || [[ ! -f "bin/llvm-min-tblgen" ]]; then
             echo "ERROR: Failed to build tablegen tools"
@@ -515,10 +515,14 @@ build_llvm() {
     local LLVM_CMAKE_FLAGS=(
         "${MINIMAL_CMAKE_FLAGS[@]}"
         "-DCMAKE_CROSSCOMPILING=ON"
+		"-DLLVM_CONFIG_PATH=$NATIVE_BUILD_DIR/bin/llvm-config"           # ADD THIS
+        "-DLLVM_NATIVE_TOOL_DIR=$NATIVE_BUILD_DIR/bin"                   # ADD THIS
+        "-DCLANG_TABLEGEN_EXE=$CLANG_TBLGEN"  
         "-DLLVM_TABLEGEN=$LLVM_TBLGEN"
         "-DCLANG_TABLEGEN=$CLANG_TBLGEN"
         "-DLLVM_DEFAULT_TARGET_TRIPLE=$TARGET_TRIPLE"
         "-DLLVM_TARGET_ARCH=$ARCH"
+		"-DLLVM_USE_HOST_TOOLS=OFF"
 		"-DCMAKE_FIND_USE_SYSTEM_PATHS=OFF"
 		"-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY"
         "-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY"
