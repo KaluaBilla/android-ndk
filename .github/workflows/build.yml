@@ -33,7 +33,7 @@ jobs:
 
       - name: Download Android NDK ZIP
         run: |
-          NDK_VERSION="r29-beta4"
+          NDK_VERSION="r29"
           NDK_ZIP="android-ndk-${NDK_VERSION}-linux.zip"
           curl -LO https://dl.google.com/android/repository/${NDK_ZIP}
           echo "ANDROID_NDK_ZIP=${{ github.workspace }}/${NDK_ZIP}" >> $GITHUB_ENV
