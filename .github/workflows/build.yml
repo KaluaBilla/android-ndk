@@ -43,7 +43,7 @@ jobs:
             SRC="$TOOLCHAIN_DIR/bin/i686-nptl-linux-gnu-$tool"
             DST="$TOOLCHAIN_DIR/bin/i686-linux-gnu-$tool"
             if [ -f "$SRC" ]; then
-              ln -sf "$SRC" "$DST"
+              sudo ln -sf "$SRC" "$DST"
             fi
           done
 
