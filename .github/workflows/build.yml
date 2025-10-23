@@ -25,7 +25,7 @@ jobs:
             autoconf automake libtool pkg-config texinfo gettext gperf gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             bison flex git xz-utils unzip nasm yasm python3 python3-pip python3-venv \
             gcc-riscv64-linux-gnu g++-riscv64-linux-gnu gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
-            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-i686-linux-gnu g++-i686-linux-gnu
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
 
       - name: Install pipx and Meson
         run: |
