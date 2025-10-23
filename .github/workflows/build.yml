@@ -1,11 +1,8 @@
 name: Build
-
 on:
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,24 +13,109 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Install system dependencies
+      
+      - name: Install common system dependencies
         run: |
           sudo apt update
           sudo apt --fix-broken install
-          sudo apt install -y gcc-multilib g++-multilib build-essential cmake ninja-build make \
-            autoconf automake libtool pkg-config texinfo gettext gperf gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            bison flex git xz-utils unzip nasm yasm python3 python3-pip python3-venv \
-            gcc-riscv64-linux-gnu g++-riscv64-linux-gnu gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
-            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-
+          sudo apt install -y build-essential cmake ninja-build make \
+            autoconf automake libtool pkg-config texinfo gettext gperf \
+            bison flex git xz-utils unzip nasm yasm python3 python3-pip python3-venv
+      
+      - name: Install aarch64 toolchain
+        if: matrix.arch == 'aarch64'
+        run: |
+          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+      
+      - name: Install x86 toolchain and create wrappers
+        if: matrix.arch == 'x86'
+        run: |
+          sudo apt install -y gcc-multilib g++-multilib
+          
+          # Create toolchain wrapper directory
+          mkdir -p $HOME/i686-toolchain/bin
+          
+          # Create wrapper scripts for i686
+          cat > $HOME/i686-toolchain/bin/i686-linux-gnu-gcc << 'EOF'
+          #!/bin/bash
+          exec gcc -m32 "$@"
+          EOF
+          
+          cat > $HOME/i686-toolchain/bin/i686-linux-gnu-g++ << 'EOF'
+          #!/bin/bash
+          exec g++ -m32 "$@"
+          EOF
+          
+          cat > $HOME/i686-toolchain/bin/i686-linux-gnu-cpp << 'EOF'
+          #!/bin/bash
+          exec cpp -m32 "$@"
+          EOF
+          
+          # Make wrappers executable
+          chmod +x $HOME/i686-toolchain/bin/i686-linux-gnu-gcc
+          chmod +x $HOME/i686-toolchain/bin/i686-linux-gnu-g++
+          chmod +x $HOME/i686-toolchain/bin/i686-linux-gnu-cpp
+          
+          # Create symlinks for other tools (they don't need -m32 flag)
+          ln -s /usr/bin/ar $HOME/i686-toolchain/bin/i686-linux-gnu-ar
+          ln -s /usr/bin/ranlib $HOME/i686-toolchain/bin/i686-linux-gnu-ranlib
+          ln -s /usr/bin/strip $HOME/i686-toolchain/bin/i686-linux-gnu-strip
+          ln -s /usr/bin/nm $HOME/i686-toolchain/bin/i686-linux-gnu-nm
+          ln -s /usr/bin/strings $HOME/i686-toolchain/bin/i686-linux-gnu-strings
+          ln -s /usr/bin/objdump $HOME/i686-toolchain/bin/i686-linux-gnu-objdump
+          ln -s /usr/bin/objcopy $HOME/i686-toolchain/bin/i686-linux-gnu-objcopy
+          ln -s /usr/bin/ld $HOME/i686-toolchain/bin/i686-linux-gnu-ld
+          ln -s /usr/bin/as $HOME/i686-toolchain/bin/i686-linux-gnu-as
+          
+          # Add to PATH
+          echo "$HOME/i686-toolchain/bin" >> $GITHUB_PATH
+          
+          # Verify installation
+          ls -la $HOME/i686-toolchain/bin/
+      
+      - name: Install riscv64 toolchain
+        if: matrix.arch == 'riscv64'
+        run: |
+          sudo apt install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
+      
+      - name: Install armv7 toolchain
+        if: matrix.arch == 'armv7'
+        run: |
+          sudo apt install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+      
+      - name: Verify toolchain installation
+        run: |
+          echo "Verifying toolchain for ${{ matrix.arch }}..."
+          case "${{ matrix.arch }}" in
+            aarch64)
+              TOOLCHAIN_PREFIX="aarch64-linux-gnu"
+              ;;
+            armv7)
+              TOOLCHAIN_PREFIX="arm-linux-gnueabihf"
+              ;;
+            x86)
+              TOOLCHAIN_PREFIX="i686-linux-gnu"
+              ;;
+            riscv64)
+              TOOLCHAIN_PREFIX="riscv64-linux-gnu"
+              ;;
+          esac
+          
+          echo "Checking for ${TOOLCHAIN_PREFIX}-gcc..."
+          which ${TOOLCHAIN_PREFIX}-gcc
+          ${TOOLCHAIN_PREFIX}-gcc --version
+          
+          echo "Checking for ${TOOLCHAIN_PREFIX}-g++..."
+          which ${TOOLCHAIN_PREFIX}-g++
+          ${TOOLCHAIN_PREFIX}-g++ --version
+      
       - name: Install pipx and Meson
         run: |
           python3 -m pip install --user pipx
           python3 -m pipx ensurepath
           export PATH="$HOME/.local/bin:$PATH"
           pipx install meson
-
+      
       - name: Download Android NDK ZIP
         run: |
           NDK_VERSION="r29"
@@ -41,22 +123,22 @@ jobs:
           curl -LO https://dl.google.com/android/repository/${NDK_ZIP}
           echo "ANDROID_NDK_ZIP=${{ github.workspace }}/${NDK_ZIP}" >> $GITHUB_ENV
           echo "ANDROID_NDK_VERSION=${NDK_VERSION}" >> $GITHUB_ENV
-
+      
       - name: Set ARCH
         run: echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
-
+      
       - name: Build LLVM
         env:
           ARCH: ${{ matrix.arch }}
         run: bash ${{ github.workspace }}/build.sh
-
+      
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: llvm-${{ matrix.arch }}
           path: |
             ${{ github.workspace }}/*.xz
-
+  
   release:
     runs-on: ubuntu-latest
     needs: build
@@ -65,13 +147,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
+      
       - name: Show collected files
         run: ls -R artifacts
-
+      
       - name: Set build date
         run: echo "BUILD_DATE=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_ENV  
-
+      
       - name: Create GitHub Release and upload ZIPs
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -80,7 +162,6 @@ jobs:
           name: "musl Build ${{ github.run_number }}"
           body: |
             musl build artifacts
-
             **Build Date:** ${{ env.BUILD_DATE }}
           files: artifacts/**/*.xz
         env:
