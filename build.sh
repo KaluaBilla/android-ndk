@@ -27,23 +27,24 @@ if [ -z "$ANDROID_NDK_VERSION" ]; then
     exit 1
 fi
 
-# Map architecture to musl triple prefixes
+
+
 case "$ARCH" in
 aarch64)
-	MUSL_PREFIX="aarch64-linux-musl"
-	HOST=aarch64-linux-musl
+	TOOLCHAIN_PREFIX="aarch64-linux-gnu"
+	HOST="aarch64-linux-gnu"
 	;;
 armv7)
-	MUSL_PREFIX="armv7l-linux-musleabihf"
-	HOST=armv7l-linux-musleabihf
+	TOOLCHAIN_PREFIX="arm-linux-gnueabihf"
+	HOST="arm-linux-gnueabihf"
 	;;
 x86)
-	MUSL_PREFIX="i686-linux-musl"
-	HOST=i686-linux-musl
+	TOOLCHAIN_PREFIX="i686-linux-gnu"
+	HOST="i686-linux-gnu"
 	;;
 riscv64)
-	MUSL_PREFIX="riscv64-linux-musl"
-	HOST=riscv64-linux-musl
+	TOOLCHAIN_PREFIX="riscv64-linux-gnu"
+	HOST="riscv64-linux-gnu"
 	;;
 *)
 	echo "Unsupported architecture: $ARCH"
@@ -52,38 +53,39 @@ riscv64)
 esac
 
 # Check if required binaries exist in PATH
-REQUIRED_TOOLS=("${MUSL_PREFIX}-gcc" "${MUSL_PREFIX}-g++" "${MUSL_PREFIX}-ar" "${MUSL_PREFIX}-ranlib" "${MUSL_PREFIX}-strip")
+REQUIRED_TOOLS=(
+	"${TOOLCHAIN_PREFIX}-gcc"
+	"${TOOLCHAIN_PREFIX}-g++"
+	"${TOOLCHAIN_PREFIX}-ar"
+	"${TOOLCHAIN_PREFIX}-ranlib"
+	"${TOOLCHAIN_PREFIX}-strip"
+)
 
 for tool in "${REQUIRED_TOOLS[@]}"; do
 	if ! command -v "$tool" >/dev/null 2>&1; then
 		echo "ERROR: Required tool not found in PATH: $tool"
-		echo "Please install musl cross-compiler and add to PATH"
+		echo "Please install Ubuntu cross-compiler packages, for example:"
+		echo "  sudo apt install gcc-${TOOLCHAIN_PREFIX} g++-${TOOLCHAIN_PREFIX}"
 		exit 1
 	fi
 done
 
-echo "[+] Found musl toolchain in PATH"
-echo "[+] Architecture: $ARCH ($MUSL_PREFIX)"
+echo "[+] Found GNU toolchain in PATH"
+echo "[+] Architecture: $ARCH ($TOOLCHAIN_PREFIX)"
 
 # Set up toolchain environment
-export CC="${MUSL_PREFIX}-gcc"
-export CXX="${MUSL_PREFIX}-g++"
-export AR="${MUSL_PREFIX}-ar"
-export RANLIB="${MUSL_PREFIX}-ranlib"
-export STRIP="${MUSL_PREFIX}-strip"
-export NM="${MUSL_PREFIX}-nm"
-export STRINGS="${MUSL_PREFIX}-strings"
-export OBJDUMP="${MUSL_PREFIX}-objdump"
-export OBJCOPY="${MUSL_PREFIX}-objcopy"
+export CC="${TOOLCHAIN_PREFIX}-gcc"
+export CXX="${TOOLCHAIN_PREFIX}-g++"
+export AR="${TOOLCHAIN_PREFIX}-ar"
+export RANLIB="${TOOLCHAIN_PREFIX}-ranlib"
+export STRIP="${TOOLCHAIN_PREFIX}-strip"
+export NM="${TOOLCHAIN_PREFIX}-nm"
+export STRINGS="${TOOLCHAIN_PREFIX}-strings"
+export OBJDUMP="${TOOLCHAIN_PREFIX}-objdump"
+export OBJCOPY="${TOOLCHAIN_PREFIX}-objcopy"
 
-# Get sysroot from compiler
-export SYSROOT=$($CC --print-sysroot)
-if [[ -z "$SYSROOT" || ! -d "$SYSROOT" ]]; then
-	echo "ERROR: Could not determine sysroot from compiler"
-	exit 1
-fi
+echo "[+] Toolchain environment configured successfully"
 
-echo "[+] Sysroot: $SYSROOT"
 
 case "$ARCH" in
 x86)
@@ -146,14 +148,14 @@ SIZE_LDFLAGS="-Wl,--gc-sections"
 
 PERF_FLAGS="-funroll-loops -fomit-frame-pointer"
 
-MUSL_FLAGS="-fvisibility=default -fPIC"
+OTHER_FLAGS="-fvisibility=default -fPIC"
 
-export CFLAGS="-I${PREFIX}/include $SIZE_CFLAGS $PERF_FLAGS $MUSL_FLAGS -DNDEBUG"
-export CXXFLAGS="$SIZE_CXXFLAGS $PERF_FLAGS $MUSL_FLAGS -DNDEBUG"
+export CFLAGS="-I${PREFIX}/include $SIZE_CFLAGS $PERF_FLAGS $OTHER_FLAGS -DNDEBUG"
+export CXXFLAGS="$SIZE_CXXFLAGS $PERF_FLAGS $OTHER_FLAGS -DNDEBUG"
 export CPPFLAGS="-I${PREFIX}/include -DNDEBUG -fPIC"
 export LDFLAGS="-L${PREFIX}/lib -L${PREFIX}/lib64 $SIZE_LDFLAGS -fPIC"
 
-export SYSROOT="$SYSROOT"
+
 
 COMMON_AUTOTOOLS_FLAGS=(
 	"--prefix=$PREFIX"
@@ -265,7 +267,6 @@ MINIMAL_CMAKE_FLAGS=(
 	"-DCMAKE_C_FLAGS=$CFLAGS"
 	"-DCMAKE_CXX_FLAGS=$CXXFLAGS"
 	"-DCMAKE_EXE_LINKER_FLAGS=$LDFLAGS"
-	"-DCMAKE_SYSROOT=$SYSROOT"
 	"-DCMAKE_FIND_USE_SYSTEM_PATHS=OFF"
 	"-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY"
     "-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY"
@@ -578,7 +579,6 @@ build_llvm() {
 
 echo "[+] Starting musl cross-compilation build for $ARCH"
 echo "[+] Host triple: $HOST"
-echo "[+] Sysroot: $SYSROOT"
 
 download_sources
 prepare_sources
