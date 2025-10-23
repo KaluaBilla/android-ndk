@@ -31,11 +31,11 @@ jobs:
         if: matrix.arch == 'x86'
         run: |
           TOOLCHAIN_URL="https://github.com/KaluaBilla/multi-arch-toolchains/releases/download/toolchains-7/toolchain-x86.tar.gz"
-          mkdir -p /opt/i686-toolchain
-          curl -L $TOOLCHAIN_URL | tar -xz -C /opt/i686-toolchain
+          mkdir -p $HOME/i686-toolchain
+          curl -L $TOOLCHAIN_URL | tar -xz -C $HOME/i686-toolchain
 
           # The extracted folder contains i686-nptl-linux-gnu
-          TOOLCHAIN_DIR=$(find /opt/i686-toolchain -type d -name "i686-nptl-linux-gnu" | head -n1)
+          TOOLCHAIN_DIR=$(find $HOME/i686-toolchain -type d -name "i686-nptl-linux-gnu" | head -n1)
           echo "Toolchain directory: $TOOLCHAIN_DIR"
 
           REQUIRED_TOOLS=(gcc g++ ar ranlib strip nm strings objdump objcopy as)
