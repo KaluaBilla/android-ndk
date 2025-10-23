@@ -20,9 +20,11 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build make \
-            autoconf automake libtool pkg-config texinfo gettext gperf \
-            bison flex git xz-utils unzip nasm yasm python3 python3-pip python3-venv
+          sudo apt-get install -y gcc-multilib g++-multilib build-essential cmake ninja-build make \
+            autoconf automake libtool pkg-config texinfo gettext gperf gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            bison flex git xz-utils unzip nasm yasm python3 python3-pip python3-venv \
+            gcc-riscv64-linux-gnu g++-riscv64-linux-gnu gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
 
       - name: Install pipx and Meson
         run: |
@@ -38,33 +40,6 @@ jobs:
           curl -LO https://dl.google.com/android/repository/${NDK_ZIP}
           echo "ANDROID_NDK_ZIP=${{ github.workspace }}/${NDK_ZIP}" >> $GITHUB_ENV
           echo "ANDROID_NDK_VERSION=${NDK_VERSION}" >> $GITHUB_ENV
-
-      - name: Download musl toolchain
-        run: |
-          case "${{ matrix.arch }}" in
-            aarch64)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/aarch64-linux-musl-cross.tgz"
-              ;;
-            armv7)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/armv7l-linux-musleabihf-cross.tgz"
-              ;;
-            x86)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/i686-linux-musl-cross.tgz"
-              ;;
-            riscv64)
-              URL="https://github.com/KaluaBilla/musl-toolchains/releases/download/idk/riscv64-linux-musl-cross.tgz"
-              ;;
-            *)
-              echo "Unsupported ARCH: ${{ matrix.arch }}"
-              exit 1
-              ;;
-          esac
-
-          TOOLCHAIN_DIR="$HOME/musl-${{ matrix.arch }}"
-          mkdir -p "$TOOLCHAIN_DIR"
-          curl -L $URL | tar -xz -C "$TOOLCHAIN_DIR" --strip-components=1
-
-          echo "$TOOLCHAIN_DIR/bin" >> $GITHUB_PATH
 
       - name: Set ARCH
         run: echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
