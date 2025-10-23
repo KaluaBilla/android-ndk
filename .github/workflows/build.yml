@@ -140,7 +140,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: musl-${{ github.run_number }}
+          tag_name: android-ndk-build-gh-actions-run-${{ github.run_number }}
           name: "musl Build ${{ github.run_number }}"
           body: |
             musl build artifacts
