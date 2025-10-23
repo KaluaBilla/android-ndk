@@ -41,7 +41,7 @@ jobs:
           REQUIRED_TOOLS=(gcc g++ ar ranlib strip nm strings objdump objcopy as)
           for tool in "${REQUIRED_TOOLS[@]}"; do
             SRC="$TOOLCHAIN_DIR/bin/i686-nptl-linux-gnu-$tool"
-            DST="$TOOLCHAIN_DIR/bin/i686-linux-gnu-$tool"
+            DST="/usr/bin/i686-linux-gnu-$tool"
             if [ -f "$SRC" ]; then
               sudo -E ln -sf "$SRC" "$DST"
             fi
