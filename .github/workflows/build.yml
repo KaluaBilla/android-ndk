@@ -65,7 +65,7 @@ jobs:
               TOOLCHAIN_PREFIX="arm-linux-gnueabihf"
               ;;
             x86)
-              TOOLCHAIN_PREFIX="i686-linux-gnu"
+              TOOLCHAIN_PREFIX="i686-nptl-linux-gnu"
               ;;
             riscv64)
               TOOLCHAIN_PREFIX="riscv64-linux-gnu"
