@@ -39,8 +39,8 @@ armv7)
 	HOST="arm-linux-gnueabihf"
 	;;
 x86)
-	TOOLCHAIN_PREFIX="i686-linux-gnu"
-	HOST="i686-nptl-linux-gnu"
+	TOOLCHAIN_PREFIX="i686-nptl-linux-gnu"
+	HOST="i686-linux-gnu"
 	;;
 riscv64)
 	TOOLCHAIN_PREFIX="riscv64-linux-gnu"
