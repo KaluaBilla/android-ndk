@@ -36,23 +36,12 @@ jobs:
 
           # The extracted folder contains i686-nptl-linux-gnu
           TOOLCHAIN_DIR=$(find $HOME/i686-toolchain -type d -name "i686-nptl-linux-gnu" | head -n1)
-          echo "Toolchain directory: $TOOLCHAIN_DIR"
-
-          REQUIRED_TOOLS=(gcc g++ ar ranlib strip nm strings objdump objcopy as)
-          for tool in "${REQUIRED_TOOLS[@]}"; do
-            SRC="$TOOLCHAIN_DIR/bin/i686-nptl-linux-gnu-$tool"
-            DST="/usr/bin/i686-linux-gnu-$tool"
-            if [ -f "$SRC" ]; then
-              sudo -E ln -sf "$SRC" "$DST"
-            fi
-          done
-
-          echo "export PATH=$TOOLCHAIN_DIR/bin:\$PATH" >> $GITHUB_ENV
-          export PATH=$TOOLCHAIN_DIR/bin:$PATH
+          echo "$TOOLCHAIN_DIR/bin" >> $GITHUB_PATH
+          export PATH="$TOOLCHAIN_DIR/bin:$PATH"
 
           # Verify
-          i686-linux-gnu-gcc --version
-          i686-linux-gnu-g++ --version
+          i686-nptl-linux-gnu-gcc --version
+          i686-nptl-linux-gnu-g++ --version
           
       
       - name: Install riscv64 toolchain
