@@ -40,7 +40,7 @@ armv7)
 	;;
 x86)
 	TOOLCHAIN_PREFIX="i686-linux-gnu"
-	HOST="i686-linux-gnu"
+	HOST="i686-nptl-linux-gnu"
 	;;
 riscv64)
 	TOOLCHAIN_PREFIX="riscv64-linux-gnu"
